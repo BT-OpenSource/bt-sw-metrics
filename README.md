@@ -42,7 +42,7 @@ in `build/asciidoc/html5`.
 ## Licence
 
 This program is licensed under the terms of the open source "MIT license", as
-contained in the file [README.md](README.md).
+contained in the file [LICENCE.md](LICENCE.md).
 
 Note that the D3, D3lplus and JIT JavaScript libraries included with this
 program are licensed under their own terms. See the relevant files in the
