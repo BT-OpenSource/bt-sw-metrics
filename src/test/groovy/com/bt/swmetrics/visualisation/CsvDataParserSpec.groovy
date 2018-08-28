@@ -117,4 +117,14 @@ b,2,
         expect:
         parser.columnIdToNameMap == ['@0': 'Path', '@1': 'Other', '@2': 'Size', '@3': 'Metric 1', '@4': 'Metric 2']
     }
+
+    def "Should be possible to supply a path filter closure"() {
+        given:
+        parser = new CsvDataParser(TEST_DATA, 'Path', 'Size', 'Metric 1', [], { it.contains('/d/') })
+
+        expect:
+        parser.paths == ['a/b/d/e', 'a/b/d/f']
+        parser.sizes == [3.0, 4.0]
+        parser.colours == [3.1, 4.1]
+    }
 }

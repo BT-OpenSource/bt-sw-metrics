@@ -1,14 +1,17 @@
 package com.bt.swmetrics.vcs
 
+import com.bt.swmetrics.Configurable
 import com.bt.swmetrics.Configurator
 import com.bt.swmetrics.PathOperations
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-class PathStatsReporter {
-    Configurator configurator
+class PathStatsReporter implements Configurable {
     PrintStream stream
+
+    private List<PathCommitRecord> recordList
+    private RevisionCollection revisionCollection
 
     LogParser getLogParser() {
         VcsParserFactory.getLogParserInstance(configurator)
@@ -19,31 +22,31 @@ class PathStatsReporter {
     }
 
     void generateVcsMetricsCsv() {
-        PathInfoMap pathInfoMap = buildPathInfoMap()
-        Instant youngest = pathInfoMap.values().lastCommit.timestamp.max()
+        buildPathCommitRecordListAndHistoryCollection()
+        Instant youngest = recordList*.commit.timestamp.max()
 
         outputVcsMetricsHeaders()
 
-        pathInfoMap.each { path, pathInfo ->
-            outputCsvDataFromCorePathInfo(path, pathInfo, youngest)
-            outputCsvDataFromHistoryIfPresent(youngest, pathInfo.history)
+        recordList.each { record ->
+            outputCsvDataFromCorePathCommitRecord(record, youngest)
+            outputCsvDataFromHistoryIfPresent(youngest, revisionCollection?.historyForPath(record.path))
             stream.println ""
         }
     }
 
     private void outputVcsMetricsHeaders() {
-        stream.print "Path,Bytes,Last Commit Age Days,Last Commit Date,Last Committer"
+        stream.print "Path,Size,Last Commit Age Days,Last Commit Date,Last Committer"
         if (configurator.vcsLogFile) {
             stream.print ",Total Commits,Aged Commit Value,Lifetime Days,Active Days,Lifetime Change Rate,Main Committer,Main Committer Percent,Total Committers"
         }
         stream.println ""
     }
 
-    private void outputCsvDataFromCorePathInfo(String path, PathInfo pathInfo, Instant youngest) {
-        def strippedPath = PathOperations.stripAnyMatchingPrefixFromPath(configurator.ignorePrefixes, path)
+    private void outputCsvDataFromCorePathCommitRecord(PathCommitRecord record, Instant youngest) {
+        def strippedPath = PathOperations.stripAnyMatchingPrefixFromPath(configurator.ignorePrefixes, record.path)
         def quotedEncodedPath = PathOperations.csvQuote(PathOperations.uriEncodePath(strippedPath))
-        def ageInDays = ChronoUnit.DAYS.between(pathInfo.lastCommit.timestamp, youngest)
-        stream.print "$quotedEncodedPath,$pathInfo.size,$ageInDays,$pathInfo.lastCommit.timestamp,$pathInfo.lastCommit.author"
+        def ageInDays = ChronoUnit.DAYS.between(record.commit.timestamp, youngest)
+        stream.print "$quotedEncodedPath,$record.size,$ageInDays,$record.commit.timestamp,${PathOperations.csvQuote(record.commit.author)}"
     }
 
     private void outputCsvDataFromHistoryIfPresent(Instant youngest, PathHistory history) {
@@ -52,7 +55,7 @@ class PathStatsReporter {
         }
         history.baseDate = youngest
         def agedCommitString = sprintf("%.3f", history.agedCommitTotal)
-        def lifetime = history.commitAges[-1] - history.commitAges[0] + 1
+        def lifetime = history.lifetimeInDays
         def activeDays = history.commitAges.groupBy { it }.size()
         def lifetimeRate = sprintf("%.3f", history.commitTotal / lifetime)
         def mainAuthorData = history.authors.groupBy { it }.max { it.value.size() }
@@ -61,41 +64,36 @@ class PathStatsReporter {
         def mainAuthorPercent = sprintf("%.1f", mainAuthorFraction * 100)
         def totalCommitters = history.authors.toUnique().size()
 
-        stream.print ",$history.commitTotal,$agedCommitString,$lifetime,$activeDays,$lifetimeRate,$mainAuthorName,$mainAuthorPercent,$totalCommitters"
+        stream.print ",$history.commitTotal,$agedCommitString,$lifetime,$activeDays,$lifetimeRate,${PathOperations.csvQuote(mainAuthorName)},$mainAuthorPercent,$totalCommitters"
     }
 
-    PathInfoMap buildPathInfoMap() {
-        PathInfoMap pathInfoMap
+    private void buildPathCommitRecordListAndHistoryCollection() {
         if (configurator.vcsListFile && configurator.vcsLogFile) {
-            pathInfoMap = buildPathInfoMapFromCombinedListAndLogFiles()
+            buildPathCommitRecordListFromListFile()
+            buildHistoryCollectionFromLogFile()
         } else if (configurator.vcsLogFile) {
-            pathInfoMap = buildPathInfoMapFromLogFile()
+            buildPathCommitRecordListAndHistoryCollectionFromLogFile()
         } else if (configurator.vcsListFile) {
-            pathInfoMap = buildPathInfoMapFromListFile()
+            buildPathCommitRecordListFromListFile()
         } else {
-            throw new InternalError("Expected to be building a PathInfoMap")
+            throw new InternalError("Expected to be building path information")
         }
-        pathInfoMap
     }
 
-    private PathInfoMap buildPathInfoMapFromCombinedListAndLogFiles() {
-        PathInfoMap pathInfoMap = listParser.parseToPathInfoMap(new File(configurator.vcsListFile))
-        def historyCollection = logParser.parseToPathHistoryCollection(new File(configurator.vcsLogFile))
-        pathInfoMap.setStripPrefixes(configurator.ignorePrefixes)
-        pathInfoMap.mergeHistory(historyCollection)
-        pathInfoMap
+    private void buildPathCommitRecordListFromListFile() {
+        recordList = listParser.parseToPathCommitRecordList(new File(configurator.vcsListFile))
     }
 
-    private PathInfoMap buildPathInfoMapFromListFile() {
-        PathInfoMap pathInfoMap = listParser.parseToPathInfoMap(new File(configurator.vcsListFile))
-        pathInfoMap.setStripPrefixes(configurator.ignorePrefixes)
-        pathInfoMap
+    private void buildPathCommitRecordListAndHistoryCollectionFromLogFile() {
+        buildHistoryCollectionFromLogFile()
+        recordList = revisionCollection.leafPathCommitRecords
     }
 
-    private PathInfoMap buildPathInfoMapFromLogFile() {
-        def historyCollection = logParser.parseToPathHistoryCollection(new File(configurator.vcsLogFile))
-        PathInfoMap pathInfoMap = historyCollection.toPathInfoMap()
-        pathInfoMap.setStripPrefixes(configurator.ignorePrefixes)
-        pathInfoMap
+    private void buildHistoryCollectionFromLogFile() {
+        revisionCollection = logParser.parseToRevisionCollection(new File(configurator.vcsLogFile))
+        // Now the final state has been built, we can discard any intermediate revisions.
+        // This can allow garbage collection to remove any no-longer referenced trees
+        // which is important for large histories.
+        revisionCollection.keepRevisions = []
     }
 }

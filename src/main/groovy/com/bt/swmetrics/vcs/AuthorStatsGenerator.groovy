@@ -1,6 +1,6 @@
 package com.bt.swmetrics.vcs
 
-import com.bt.swmetrics.Configurator
+import com.bt.swmetrics.Configurable
 import com.bt.swmetrics.PathOperations
 
 import java.time.Instant
@@ -10,8 +10,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-class AuthorStatsGenerator {
-    Configurator configurator
+class AuthorStatsGenerator implements Configurable {
     PrintStream stream
 
     LogParser getLogParser() {
@@ -41,8 +40,11 @@ class AuthorStatsGenerator {
 
     private void outputAuthStatsHeaderRow(Set<OffsetDateTime> months) {
         DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern('MMM-yy').withZone(ZoneId.of('UTC'))
-        stream.print "Author,First Commit,First Commit Age,Last Commit,Last Commit Age,Tenure,Active Days,Total Commits,Total Paths,Revisited Paths"
-        months.each { stream.print ",${monthFormatter.format(it)}" }
+        stream.print "Author,Total Commits,Total Paths,Revisited Paths,Tenure,Active Days,First Commit,First Commit Age,Last Commit,Last Commit Age"
+        if (configurator.full) {
+            months.each { stream.print ",${monthFormatter.format(it)} Commits" }
+            months.each { stream.print ",${monthFormatter.format(it)} Paths" }
+        }
         stream.println ""
     }
 
@@ -56,8 +58,11 @@ class AuthorStatsGenerator {
         def firstAge = instantAgeInDaysRelativeToBase(stats.firstCommitTimestamp, youngest)
         def lastAge = instantAgeInDaysRelativeToBase(stats.lastCommitTimestamp, youngest)
         def activeDays = calculateActiveDayCount(stats.commitTimestamps)
-        stream.print "$stats.author,$firstDateString,$firstAge,$lastDateString,$lastAge,$stats.tenure,$activeDays,${stats.commitTimestamps.size()},$pathCount,$revisitedCount"
-        stats.monthlyTotals(oldest, youngest).each { date, total -> stream.print ",$total" }
+        stream.print "${PathOperations.csvQuote(stats.author)},${stats.commitTimestamps.size()},$pathCount,$revisitedCount,$stats.tenure,$activeDays,$firstDateString,$firstAge,$lastDateString,$lastAge"
+        if (configurator.full) {
+            stats.monthlyTotals(oldest, youngest).each { date, tuple -> stream.print ",${tuple.first}" }
+            stats.monthlyTotals(oldest, youngest).each { date, tuple -> stream.print ",${tuple.second}" }
+        }
         stream.println ""
     }
 
@@ -89,7 +94,7 @@ class AuthorStatsGenerator {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern('yyyy-MM-dd HH:mm:ss').withZone(ZoneId.systemDefault())
 
         stats.pathCommitDates.each { path, instants ->
-            stream.println "$stats.author,${PathOperations.uriEncodePath(path)},${timeFormatter.format(instants.min())},${timeFormatter.format(instants.max())},${instants.size()}"
+            stream.println "${PathOperations.csvQuote(stats.author)},${PathOperations.uriEncodePath(path)},${timeFormatter.format(instants.min())},${timeFormatter.format(instants.max())},${instants.size()}"
         }
     }
 }

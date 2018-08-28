@@ -97,4 +97,18 @@ class D3PlusProducerSpec extends Specification {
         then:
         list == ['#0', '#1', '#2', '#3']
     }
+
+    def "Should be possible to limit the nesting levels"() {
+        producer = new D3PlusProducer(sizeMetricName: 'Size', colourMetricName: 'Colour', extraMetricNames: ['Foo', 'Bar'], levelLimit: 2)
+        producer.addData('a/b/c', 1.23, 4.56, ['foo-1', 'bar-1'])
+        producer.addData('a/b/d/e', 2.34, 5.67, ['foo-2', 'bar-2'])
+
+        when:
+        def jsonish = producer.toJsonable()
+
+        then:
+        jsonish.size() == 2
+        jsonish[0] == ['#0': 'a', '#1': 'b/c', 'Size': 1.23, 'Colour': 4.56, 'Foo': 'foo-1', 'Bar': 'bar-1']
+        jsonish[1] == ['#0': 'a', '#1': 'b/d/e', 'Size': 2.34, 'Colour': 5.67, 'Foo': 'foo-2', 'Bar': 'bar-2']
+    }
 }

@@ -73,6 +73,9 @@ $colourFields
 sizeFields
 $sizeFields
 ---
+extraFields
+$extraFields
+---
 columnIdToNameMap
 $columnIdToNameMap
 ---

@@ -1,12 +1,12 @@
 package com.bt.swmetrics.csv
 
+import com.bt.swmetrics.Configurable
 import com.bt.swmetrics.Configurator
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVPrinter
 
-class CsvJoinRunner {
+class CsvJoinRunner implements Configurable {
     PrintStream stream
-    Configurator configurator
 
     def joinFiles() {
         if (configurator.arguments.size() != 2) {

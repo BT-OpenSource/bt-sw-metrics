@@ -50,9 +50,8 @@ class TextFileFinder {
     }
 
     private boolean checkIfFilePathIncludedByPattern(File file) {
-        def path = file.absolutePath
-        def included = includedPatterns.every { path =~ it }
-        def excluded = excludedPatterns.any { path =~ it }
+        def included = includedPatterns.every { file.path =~ it }
+        def excluded = excludedPatterns.any { file.path =~ it }
         log.debug("$file matching path by pattern: included = $included, excluded = $excluded")
         included && !excluded
     }

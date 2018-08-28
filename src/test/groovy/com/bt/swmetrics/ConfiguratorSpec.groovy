@@ -98,6 +98,14 @@ class ConfiguratorSpec extends Specification {
         configurator.includedPatterns == []
     }
 
+    def "Should throw an exception for a missing option argument"() {
+        when:
+        configurator = new Configurator('--include')
+
+        then:
+        thrown(IllegalArgumentException)
+    }
+
     def "Should be able to request treemap generation"() {
         given:
         Configurator configurator1 = new Configurator(['--treemap', 'jit'] as String[])
@@ -388,5 +396,34 @@ class ConfiguratorSpec extends Specification {
         expect:
         !configurator.vcsDiffFile
         configurator1.vcsDiffFile == 'file'
+    }
+
+    def "Should be able to specify tree visualisation depth level limit"() {
+        given:
+        Configurator configurator1 = new Configurator(['--level-limit', '1'] as String[])
+        Configurator configurator2 = new Configurator(['-L', '2'] as String[])
+
+        expect:
+        configurator.levelLimit == 0
+        configurator1.levelLimit == 1
+        configurator2.levelLimit == 2
+    }
+
+    def "Should be able to request full stats output"() {
+        given:
+        Configurator configurator1 = new Configurator(['--full'] as String[])
+
+        expect:
+        !configurator.full
+        configurator1.full
+    }
+
+    def "Should be able to request overall figures only"() {
+        given:
+        Configurator configurator1 = new Configurator(['--overall-only'] as String[])
+
+        expect:
+        !configurator.overallOnly
+        configurator1.overallOnly
     }
 }

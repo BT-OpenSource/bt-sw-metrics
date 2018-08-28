@@ -9,6 +9,7 @@ trait VisualisationProducer {
     BigDecimal bottomThreshold = 0
     int bottomColourValue = 0x00ff00
     int topColourValue = 0xff0000
+    int levelLimit = 0
 
     Map resourceNames
 

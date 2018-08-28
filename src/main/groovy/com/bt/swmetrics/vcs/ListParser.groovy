@@ -1,11 +1,12 @@
 package com.bt.swmetrics.vcs
 
-abstract class ListParser {
-    List<Tuple> parseToTupleList(String text) {
-        throw new UnsupportedOperationException("ListParser parseToTupleList not supported")
+
+abstract class ListParser implements PathProcessor {
+    List<PathCommitRecord> parseToPathCommitRecordList(String text) {
+        throw new UnsupportedOperationException("ListParser parseToPathCommitRecordList not supported")
     }
 
-    PathInfoMap parseToPathInfoMap(File file) {
-        throw new UnsupportedOperationException("ListParser parseToPathInfoMap not supported")
+    List<PathCommitRecord> parseToPathCommitRecordList(File file) {
+        throw new UnsupportedOperationException("ListParser parseToPathCommitRecordList not supported")
     }
 }

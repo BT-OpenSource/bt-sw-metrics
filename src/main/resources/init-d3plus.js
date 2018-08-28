@@ -60,6 +60,34 @@ function changeColour() {
     }
 }
 
+function getTooltipMetrics() {
+    // See https://stackoverflow.com/a/5867262
+    var result = [];
+    var select = document.getElementById("tooltip-select");
+    var options = select && select.options;
+    var opt;
+
+    for (var i = 0; i < options.length; i++) {
+        opt = options[i];
+
+        if (opt.selected) {
+            result.push(opt.value || opt.text);
+        }
+    }
+    return result;
+}
+
+function changeTooltip() {
+    var metrics = getTooltipMetrics();
+    if (metrics != []) {
+        //console.log("Changing colour to " + metric);
+        visualisation
+            .tooltip([PARAMS.colourMetric, PARAMS.sizeMetric].concat(metrics))
+            .draw();
+        forceRedrawIfNecessary();
+    }
+}
+
 function forceRedrawIfNecessary() {
     // Bug in IE means that sometime the redraw does not show the text
     // correctly (at all) so we schedule a re-draw.
@@ -140,7 +168,7 @@ function createVisualisation(sizeMetric, colourMetric, aggregationType) {
                 }
             }
         })
-        .tooltip([PARAMS.colourMetric, PARAMS.sizeMetric].concat(PARAMS.extraColumns))
+        .tooltip([PARAMS.colourMetric, PARAMS.sizeMetric])
         .legend(true)
         .labels({"align": "left", "valign": "top"})
         .draw();

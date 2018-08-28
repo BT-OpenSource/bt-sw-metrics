@@ -3,9 +3,9 @@ package com.bt.swmetrics.vcs.git
 import com.bt.swmetrics.vcs.AuthorStats
 import com.bt.swmetrics.vcs.Commit
 import com.bt.swmetrics.vcs.LogParser
+import com.bt.swmetrics.vcs.PathCommitRecord
 import groovy.util.logging.Slf4j
 
-import java.text.ParseException
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -27,10 +27,10 @@ class GitLogParser extends LogParser {
     private static final DateTimeFormatter DEFAULT_DATE_FORMAT = DateTimeFormatter.ofPattern('E MMM d HH:mm:ss yyyy xx')
 
     @Override
-    List<Tuple> parseToTupleList(String text) {
+    List<PathCommitRecord> parseToPathCommitRecordList(String text) {
         String author
         Instant dateTime
-        List<Tuple> result = []
+        List<PathCommitRecord> result = []
 
         def nonBlankLines = text.split(/\n/).collect { it.trim() }.grep { it }
 
@@ -49,11 +49,11 @@ class GitLogParser extends LogParser {
                     break
 
                 case ~/^[ADM]\t.*/:
-                    result << createTupleForAddDeleteOrModify(pseudoRevision, author, dateTime, line)
+                    result.addAll(createEntriesForAddDeleteOrModify(pseudoRevision, author, dateTime, line))
                     break
 
                 case ~/^[CR]\d+\t.*/:
-                    result.addAll(createTuplesForRenameOrCopy(pseudoRevision, author, dateTime, line))
+                    result.addAll(createEntriesForRenameOrCopy(pseudoRevision, author, dateTime, line))
                     break
 
                 default:
@@ -65,8 +65,8 @@ class GitLogParser extends LogParser {
     }
 
     @Override
-    List<Tuple> parseToTupleList(File file) {
-        parseToTupleList(file.text)
+    List<PathCommitRecord> parseToPathCommitRecordList(File file) {
+        parseToPathCommitRecordList(file.text)
     }
 
     private static Tuple determineRevisionCountAndIncrement(List <String> lines) {
@@ -94,42 +94,46 @@ class GitLogParser extends LogParser {
         }
     }
 
-    private static Tuple createTupleForAddDeleteOrModify(int pseudoRevision, String author, Instant dateTime, String line) {
+    private List<PathCommitRecord> createEntriesForAddDeleteOrModify(int pseudoRevision, String author, Instant dateTime, String line) {
         def fields = line.split(/\t/) as List
         def action = fields[0]
-        def path = fields[1]
-        def tuple = new Tuple(path, new Commit(pseudoRevision, author, dateTime, action), null, -1)
-        tuple
+        def path = stripPrefixes(fields[1])
+        if (checkIfPathIncluded(path)) {
+            [new PathCommitRecord(path, new Commit(pseudoRevision, author, dateTime, action), null, -1)]
+        } else {
+            []
+        }
     }
 
-    private static List createTuplesForRenameOrCopy(int pseudoRevision, String author, Instant dateTime, String line) {
+    private List<PathCommitRecord> createEntriesForRenameOrCopy(int pseudoRevision, String author, Instant dateTime, String line) {
         def fields = line.split(/\t/) as List
-        def newPath = fields[1]
-        def oldPath = fields[2]
-        List<Tuple> tuples = []
+        def newPath = stripPrefixes(fields[1])
+        def oldPath = stripPrefixes(fields[2])
+        List<PathCommitRecord> entries = []
 
-        tuples << new Tuple(newPath, new Commit(pseudoRevision, author, dateTime, 'A'), oldPath, pseudoRevision - 1)
-        if (line.startsWith('R')) {
-            tuples << new Tuple(oldPath, new Commit(pseudoRevision, author, dateTime, 'D'), null, -1)
+        if (!checkIfPathIncluded(newPath)) {
+            return entries
         }
-        tuples
+        entries << new PathCommitRecord(newPath, new Commit(pseudoRevision, author, dateTime, 'A'), oldPath, pseudoRevision - 1)
+        if (line.startsWith('R')) {
+            entries << new PathCommitRecord(oldPath, new Commit(pseudoRevision, author, dateTime, 'D'), null, -1)
+        }
+        entries
     }
 
     @Override
     Map<String, AuthorStats> parseToAuthorStatsMap(File file) {
-        def parsed = parseToTupleList(file.text)
-        def tuplesByRevision = parsed.groupBy { String path, Commit commit, String copyPath, Integer copyRev ->
-            commit.revision
-        }
-        createAuthorStatsMapFromRevisions(tuplesByRevision)
+        def parsed = parseToPathCommitRecordList(file.text)
+        def entriesByRevision = parsed.groupBy { it.commit.revision }
+        createAuthorStatsMapFromRevisions(entriesByRevision)
     }
 
-    private static Map<String, AuthorStats> createAuthorStatsMapFromRevisions(Map<Integer, List<Tuple>> tuplesByRevision) {
+    private static Map<String, AuthorStats> createAuthorStatsMapFromRevisions(Map<Integer, List<PathCommitRecord>> entriesByRevision) {
         Map<String, AuthorStats> result = [:]
-        tuplesByRevision.each { int revision, List<Tuple> tuples ->
-            def (_, Commit firstCommit) = tuples[0]
+        entriesByRevision.each { int revision, List<PathCommitRecord> records ->
+            def Commit firstCommit = records[0].commit
             def author = firstCommit.author
-            List<String> paths = tuples.collect { it[0] as String }
+            List<String> paths = records.collect { it.path }
             result[author] = result[author] ?: new AuthorStats(author: author)
             result[author].addCommit(firstCommit.timestamp, paths)
         }

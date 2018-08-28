@@ -1,5 +1,6 @@
 package com.bt.swmetrics.vcs.svn
 
+import com.bt.swmetrics.Configurator
 import spock.lang.Specification
 
 
@@ -8,7 +9,14 @@ class SvnDiffParserSpec extends Specification {
     public static final String XML_FILE_PATH = 'OD File/0030_OD.xml'
     public static final String SQL_FILE_PATH = 'scripts/repeatable/#test_#packagebody_!swns_ut_eton_xml_processing.sql'
 
-    SvnDiffParser parser = new SvnDiffParser(lines: DIFF_LINES)
+    Configurator stubConfigurator
+    SvnDiffParser parser
+
+    def setup() {
+        stubConfigurator = Stub(Configurator)
+        stubConfigurator.ignorePrefixes >> []
+        parser = new SvnDiffParser(lines: DIFF_LINES, configurator: stubConfigurator)
+    }
 
     def "Should be able to obtain a list of all paths from the Index lines"() {
         expect:
@@ -36,4 +44,14 @@ class SvnDiffParserSpec extends Specification {
         chunks[SQL_FILE_PATH][1].newStart == 5771
     }
 
+    def "Should strip prefixes when configured"() {
+        given:
+        stubConfigurator = Stub(Configurator)
+        stubConfigurator.ignorePrefixes >> ['scripts/repeatable']
+        parser.configurator = stubConfigurator
+
+        expect:
+        parser.paths.contains('#test_#packagebody_!swns_ut_eton_xml_processing.sql')
+        parser.chunksByPath['#test_#packagebody_!swns_ut_eton_xml_processing.sql'].size() == 7
+    }
 }

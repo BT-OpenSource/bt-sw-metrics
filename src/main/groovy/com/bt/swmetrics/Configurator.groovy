@@ -29,6 +29,9 @@ class Configurator {
     static final String OPT_AUTHOR_STATS = 'author-stats'
     static final String OPT_AUTHOR_PATHS = 'author-paths'
     static final String OPT_VCS_TYPE = 'vcs-type'
+    static final String OPT_LEVEL_LIMIT = 'level-limit'
+    static final String OPT_FULL = 'full'
+    static final String OPT_OVERALL_ONLY = 'overall-only'
 
 
     static final BigDecimal AUTO_THRESHOLD = -(Double.MAX_VALUE as BigDecimal)
@@ -50,7 +53,19 @@ class Configurator {
     Configurator(String[] args) {
         allArgs = args
         initialiseCliBuilder()
-        options = cliBuilder.parse(allArgs)
+        options = parseOptionsAndCheckValidity(allArgs)
+        setDebugLoggingIfRequired(options)
+    }
+
+    private OptionAccessor parseOptionsAndCheckValidity(String[] allArgs) {
+        def parsedOptions = cliBuilder.parse(allArgs)
+        if (!parsedOptions) {
+            throw new IllegalArgumentException("Failed to parse command-line arguments")
+        }
+        parsedOptions
+    }
+
+    private void setDebugLoggingIfRequired(OptionAccessor options) {
         if (options[OPT_DEBUG]) {
             System.setProperty('org.slf4j.simpleLogger.defaultLogLevel', 'debug')
         }
@@ -87,6 +102,9 @@ class Configurator {
             _(longOpt: OPT_VCS_DIFF_FILE, args: 1, argName: 'file-name', 'Process output from VCS diff command')
             _(longOpt: OPT_AUTHOR_STATS, "With --vcs-log, generate statistics about authors, not paths")
             _(longOpt: OPT_AUTHOR_PATHS, "With --vcs-log, generate data about authors and paths they have touched")
+            L(longOpt: OPT_LEVEL_LIMIT, args: 1, argName: 'level', "Limits the depth level of a generated tree-map")
+            _(longOpt: OPT_FULL, "Outputs extra statistics in CSV reports")
+            _(longOpt: OPT_OVERALL_ONLY, "Outputs only overall consolidated file metrics")
         }
     }
 
@@ -229,5 +247,18 @@ class Configurator {
 
     String getVcsType() {
         options.v ?: null
+    }
+
+    int getLevelLimit() {
+        options[OPT_LEVEL_LIMIT] ? options[OPT_LEVEL_LIMIT] as Integer : 0
+
+    }
+
+    boolean isFull() {
+        options[OPT_FULL]
+    }
+
+    boolean isOverallOnly() {
+        options[OPT_OVERALL_ONLY]
     }
 }

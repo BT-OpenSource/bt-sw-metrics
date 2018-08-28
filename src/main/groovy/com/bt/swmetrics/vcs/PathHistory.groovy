@@ -8,8 +8,7 @@ import java.time.temporal.ChronoUnit
 class PathHistory {
 
     public static final int CHANGE_HALF_LIFE_DAYS = 180
-    private SortedSet<Commit> commitStream = new TreeSet<>()
-    private int activeCommitTotal = 0   // Can be computed (activeCommits.size()) but maintained for efficiency
+    private List<Commit> commitList = []
     Instant baseDate = Instant.now()
 
     static BigDecimal decayFactor(long ageInDays) {
@@ -17,29 +16,20 @@ class PathHistory {
     }
 
     def addCommit(Commit commit) {
-        if (commit.action == 'D') {
-            activeCommitTotal = 0
-        } else {
-            activeCommitTotal++
-        }
-        commitStream << commit
+        commitList.add(0, commit)
         commit
     }
 
-     SortedSet<Commit> getActiveCommits() {
-         allCommits.takeWhile { it.action != 'D' }
+     List<Commit> getActiveCommits() {
+         commitList
      }
 
-    SortedSet<Commit> getAllCommits() {
-        commitStream
-    }
-
     int getCommitTotal() {
-        activeCommitTotal
+        commitList.size()
     }
 
     BigDecimal getAgedCommitTotal() {
-        activeCommits.inject(0.0) { accumulator, commit -> accumulator + decayedChangeValue(commit.timestamp) }
+        commitList.inject(0.0) { accumulator, commit -> accumulator + decayedChangeValue(commit.timestamp) }
     }
 
     private BigDecimal decayedChangeValue(Instant timestamp) {
@@ -51,27 +41,27 @@ class PathHistory {
     }
 
     List<String> getAuthors() {
-        activeCommits.collect { it.author }
+        commitList.collect { it.author }
     }
 
     List<Long> getCommitAges() {
-        activeCommits.collect { ageOfInstantInDays(it.timestamp) }
+        commitList.collect { ageOfInstantInDays(it.timestamp) }
     }
 
     List<Integer> getRevisions() {
-        activeCommits.collect { it.revision }
+        commitList.collect { it.revision }
     }
 
     List<Instant> getTimestamps() {
-        activeCommits.collect { it.timestamp }
+        commitList.collect { it.timestamp }
     }
 
     List<String> getActions() {
-        activeCommits.collect { it.action }
+        commitList.collect { it.action }
     }
 
-    def copyHistory(PathHistory sourceHistory, int sourceRevision) {
-        commitStream += sourceHistory.commitStream.dropWhile { Commit commit -> commit.revision > sourceRevision }
-        activeCommitTotal = allCommits.takeWhile { it.action != 'D' }.size()
+    long getLifetimeInDays() {
+        def sortedAges = commitAges.sort()
+        sortedAges[-1] - sortedAges[0] + 1
     }
 }

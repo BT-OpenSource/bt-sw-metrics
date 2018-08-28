@@ -30,6 +30,14 @@ class D3PlusRecordSpec extends Specification {
         record.pathComponents == ['a', 'b c', 'd?']
     }
 
+    def "Path splitting can be limited in levels"() {
+        given:
+        record = new D3PlusRecord(path: 'a/b/c', levelLimit: 2)
+
+        expect:
+        record.pathComponents == ['a', 'b/c']
+    }
+
     def "Should be possible to supply size, colour and extra values"() {
         given:
         record = new D3PlusRecord(size: 1.23, colour: 4.56, extra: [1, 'foo'])

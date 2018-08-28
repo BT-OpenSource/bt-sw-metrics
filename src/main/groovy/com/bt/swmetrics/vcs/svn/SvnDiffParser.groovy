@@ -9,7 +9,11 @@ class SvnDiffParser extends DiffParser {
 
     @Override
     List<String> getPaths() {
-        lines.findAll { it =~ /^Index:/ }.collect { (it - 'Index: ') .trim() }
+        lines.findAll { it =~ /^Index:/ }.collect { extractPath(it) }
+    }
+
+    private String extractPath(String indexLine) {
+        stripPrefixes((indexLine - 'Index: ').trim())
     }
 
     Map<String,List<String>> getLinesByPath() {
@@ -17,7 +21,7 @@ class SvnDiffParser extends DiffParser {
         def currentPath = ''
         lines.each {
             if (it =~ /^Index:/) {
-                currentPath = it - 'Index: '
+                currentPath = extractPath(it)
                 result[currentPath] = []
             } else if (currentPath) {
                 result[currentPath] << it

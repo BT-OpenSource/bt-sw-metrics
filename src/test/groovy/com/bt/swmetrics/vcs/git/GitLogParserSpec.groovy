@@ -1,5 +1,6 @@
 package com.bt.swmetrics.vcs.git
 
+import com.bt.swmetrics.Configurator
 import com.bt.swmetrics.vcs.AuthorStats
 import com.bt.swmetrics.vcs.Commit
 import spock.lang.Specification
@@ -9,16 +10,23 @@ import java.time.format.DateTimeParseException
 
 
 class GitLogParserSpec extends Specification {
-    GitLogParser parser = new GitLogParser()
+    Configurator stubConfigurator
+    GitLogParser parser
+
+    def setup() {
+        stubConfigurator = Stub(Configurator)
+        stubConfigurator.ignorePrefixes >> []
+        parser = new GitLogParser(configurator: stubConfigurator)
+    }
 
     def "Empty text should yield an empty list"() {
         expect:
-        parser.parseToTupleList('') == []
+        parser.parseToPathCommitRecordList('') == []
     }
 
     def "Blank line should be ignored"() {
         expect:
-        parser.parseToTupleList('''
+        parser.parseToPathCommitRecordList('''
   \t
   
 \t
@@ -26,7 +34,7 @@ class GitLogParserSpec extends Specification {
 ''') == []
     }
 
-    def "Should be able to parse text to give a list of path/commit tuples"() {
+    def "Should be able to parse text to give a list of PathCommitRecord"() {
         given:
         def logtext = '''date 2017-08-01T10:06:04+01:00
 author neil
@@ -48,21 +56,21 @@ M\tsrc/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy
 
 '''
         when:
-        def result = parser.parseToTupleList(logtext)
+        def result = parser.parseToPathCommitRecordList(logtext)
 
         then:
         result.size() == 7
 
-        result[0][0] == 'src/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy'
-        result[0][1] == new Commit(
+        result[0].path == 'src/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy'
+        result[0].commit == new Commit(
                 revision:  1,
                 author: 'neil',
                 timestamp: Instant.parse('2017-08-01T09:06:04Z'),
                 action: 'M'
         )
 
-        result[6][0] == 'src/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy'
-        result[6][1] == new Commit(
+        result[6].path == 'src/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy'
+        result[6].commit == new Commit(
                 revision:  3,
                 author: 'neil',
                 timestamp: Instant.parse('2017-08-03T10:54:15Z'),
@@ -70,9 +78,37 @@ M\tsrc/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy
         )
     }
 
-    /*
+    def "Should be able to include/exclude paths from PathCommitRecord list"() {
+        given:
+        def logtext = '''date 2017-08-01T10:06:04+01:00
+author neil
 
-     */
+M\tsrc/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy
+M\tsrc/test/groovy/com/bt/swmetrics/svn/AuthorStatsSpec.groovy
+M\tsrc/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy
+date 2017-08-02T10:48:12+01:00
+author fred
+
+M\tsrc/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy
+M\tsrc/test/groovy/com/bt/swmetrics/svn/AuthorStatsSpec.groovy
+
+date 2017-08-03T11:54:15+01:00
+author neil
+
+M\tsrc/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy
+M\tsrc/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy
+
+'''
+        stubConfigurator.includedPatterns >> [/.*Runner.*/]
+        stubConfigurator.excludedPatterns >> [/.*Spec.*/]
+
+        when:
+        def result = parser.parseToPathCommitRecordList(logtext)
+
+        then:
+        result.collect { it.path }.unique() == ['src/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy']
+    }
+
     def "Should parse a rename as an add and delete"() {
         given:
         def logtext = '''date 2017-05-18T15:09:11+01:00
@@ -82,24 +118,24 @@ R063\tsrc/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy\tsrc/test
 
 '''
         when:
-        def result = parser.parseToTupleList(logtext)
+        def result = parser.parseToPathCommitRecordList(logtext)
 
         then:
         result.size() == 2
 
-        result[0][0] == 'src/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy'
-        result[0][1] == new Commit(
+        result[0].path == 'src/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy'
+        result[0].commit == new Commit(
                 revision:  1,
                 author: 'neil',
                 timestamp: Instant.parse('2017-05-18T14:09:11Z'),
                 action: 'A'
         )
         // Next are "copy-from-path" and "copy-from-revision" in svn terms
-        result[0][2] == 'src/test/groovy/com/bt/swmetrics/TreeMapVisualisationGeneratorSpec.groovy'
-        result[0][3] == 0   // One less than current revision
+        result[0].copyPath == 'src/test/groovy/com/bt/swmetrics/TreeMapVisualisationGeneratorSpec.groovy'
+        result[0].copyRevision == 0   // One less than current revision
 
-        result[1][0] == 'src/test/groovy/com/bt/swmetrics/TreeMapVisualisationGeneratorSpec.groovy'
-        result[1][1] == new Commit(
+        result[1].path == 'src/test/groovy/com/bt/swmetrics/TreeMapVisualisationGeneratorSpec.groovy'
+        result[1].commit == new Commit(
                 revision:  1,
                 author: 'neil',
                 timestamp: Instant.parse('2017-05-18T14:09:11Z'),
@@ -116,21 +152,20 @@ C100\tsrc/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy\tsrc/test
 
 '''
         when:
-        def result = parser.parseToTupleList(logtext)
+        def result = parser.parseToPathCommitRecordList(logtext)
 
         then:
         result.size() == 1
 
-        result[0][0] == 'src/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy'
-        result[0][1] == new Commit(
+        result[0].path == 'src/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy'
+        result[0].commit == new Commit(
                 revision: 1,
                 author: 'neil',
                 timestamp: Instant.parse('2017-05-18T14:09:11Z'),
                 action: 'A'
         )
-        // Next are "copy-from-path" and "copy-from-revision" in svn terms
-        result[0][2] == 'src/test/groovy/com/bt/swmetrics/TreeMapVisualisationGeneratorSpec.groovy'
-        result[0][3] == 0   // One less than current revision
+        result[0].copyPath == 'src/test/groovy/com/bt/swmetrics/TreeMapVisualisationGeneratorSpec.groovy'
+        result[0].copyRevision == 0   // One less than current revision
     }
 
     def "Should be able to handle commits in youngest-to-oldest order"() {
@@ -153,21 +188,21 @@ M\tsrc/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy
 M\tsrc/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy
 '''
         when:
-        def result = parser.parseToTupleList(logtext)
+        def result = parser.parseToPathCommitRecordList(logtext)
 
         then:
         result.size() == 7
 
-        result[0][0] == 'src/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy'
-        result[0][1] == new Commit(
+        result[0].path == 'src/main/groovy/com/bt/swmetrics/svn/SvnRunner.groovy'
+        result[0].commit == new Commit(
                 revision:  3,
                 author: 'neil',
                 timestamp: Instant.parse('2017-08-03T10:54:15Z'),
                 action: 'M'
         )
 
-        result[6][0] == 'src/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy'
-        result[6][1] == new Commit(
+        result[6].path == 'src/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy'
+        result[6].commit == new Commit(
                 revision:  1,
                 author: 'neil',
                 timestamp: Instant.parse('2017-08-03T09:06:04Z'),
@@ -185,6 +220,7 @@ M\tsrc/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy
         then:
         map.size() == 2
         map['neil'].commitTimestamps.size() == 2
+        map['neil'].pathModificationCounts.size() == 2
         map['neil'].tenure == 3
         map['neil'].pathCommits == [
                 'src/test/groovy/com/bt/swmetrics/svn/AuthorStatsSpec.groovy': 1,
@@ -193,6 +229,7 @@ M\tsrc/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy
                 'src/test/groovy/com/bt/swmetrics/svn/SvnRunnerSpec.groovy': 2
         ]
         map['fred'].commitTimestamps.size() == 1
+        map['fred'].pathModificationCounts.size() == 1
         map['fred'].tenure == 1
         map['fred'].pathCommits == [
                 'src/test/groovy/com/bt/swmetrics/svn/AuthorStatsSpec.groovy': 1,
@@ -209,12 +246,12 @@ M\tsrc/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy
 
 '''
         when:
-        def result = parser.parseToTupleList(logtext)
+        def result = parser.parseToPathCommitRecordList(logtext)
 
         then:
         result.size() == 1
 
-        result[0][1] == new Commit(
+        result[0].commit == new Commit(
                 revision: 1,
                 author: 'Sam Body',
                 timestamp: Instant.parse('2017-05-18T14:09:11Z'),
@@ -231,12 +268,12 @@ M\tsrc/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy
 
 '''
         when:
-        def result = parser.parseToTupleList(logtext)
+        def result = parser.parseToPathCommitRecordList(logtext)
 
         then:
         result.size() == 1
 
-        result[0][1] == new Commit(
+        result[0].commit == new Commit(
                 revision: 1,
                 author: 'Sam Body',
                 timestamp: Instant.parse('2017-05-18T14:09:11Z'),
@@ -256,9 +293,38 @@ M       src/main/groovy/com/bt/swmetrics/Main.groovy
 
 '''
         when:
-        def result = parser.parseToTupleList(logtext)
+        def result = parser.parseToPathCommitRecordList(logtext)
 
         then:
         thrown(DateTimeParseException)
+    }
+
+    def "Should strip prefixes from all paths if required"() {
+        given:
+        def logtext = '''date 2017-05-18T15:09:11+01:00
+author neil
+
+C100\tsrc/test/groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy\tsrc/test/groovy/com/bt/swmetrics/TreeMapVisualisationGeneratorSpec.groovy
+
+'''
+        stubConfigurator = Stub(Configurator)
+        stubConfigurator.ignorePrefixes >> ['src/test']
+        parser.configurator = stubConfigurator
+
+        when:
+        def result = parser.parseToPathCommitRecordList(logtext)
+
+        then:
+        result.size() == 1
+
+        result[0].path == 'groovy/com/bt/swmetrics/VisualisationBuilderSpec.groovy'
+        result[0].commit == new Commit(
+                revision: 1,
+                author: 'neil',
+                timestamp: Instant.parse('2017-05-18T14:09:11Z'),
+                action: 'A'
+        )
+        result[0].copyPath == 'groovy/com/bt/swmetrics/TreeMapVisualisationGeneratorSpec.groovy'
+        result[0].copyRevision == 0   // One less than current revision
     }
 }

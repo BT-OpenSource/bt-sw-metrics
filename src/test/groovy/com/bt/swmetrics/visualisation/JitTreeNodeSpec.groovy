@@ -87,6 +87,20 @@ class JitTreeNodeSpec extends Specification {
         root.children[0].children[0].children[0] == node
     }
 
+    def "Should be possible to limit path level splitting"() {
+        given:
+        def root = new JitTreeNode(path: 'foo', levelLimit: 2)
+
+        when:
+        def node = root.addChild('foo/bar/baz', 42, 123)
+
+        then:
+        root.children.size() == 1
+        root.children[0].children.size() == 0
+        root.children[0].path == 'foo/bar/baz'
+        root.children[0].name == 'bar/baz'
+    }
+
     def "Adding children should increment sum of size metric values up the tree"() {
         given:
         def root = new JitTreeNode(path: 'foo')

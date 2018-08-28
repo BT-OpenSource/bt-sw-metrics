@@ -13,6 +13,7 @@ class JitProducer implements VisualisationProducer {
     JitTreeNode root = new JitTreeNode(path: '')
 
     def addData(String path, BigDecimal size, BigDecimal colour, List extra) {
+        root.levelLimit = levelLimit
         return root.addChild(path, size, colour, extra)
     }
 

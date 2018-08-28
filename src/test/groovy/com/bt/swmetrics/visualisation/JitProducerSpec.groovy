@@ -86,4 +86,30 @@ class JitProducerSpec extends Specification {
                 '"ms":"#cc3200","p":"a"}}],"id":"ID-8","name":"","data":{"$area":16.0,"$color":"#9f5f00","c":6.250,"mc":8.000,' +
                 '"ms":"#cc3200","p":""}}'
     }
+
+    def "Should be able to limit tree level"() {
+        given:
+        def set = new JitProducer(partitionSize: 500, topThreshold: 10, levelLimit: 2)
+        set.addData('a/b/c', 1, 2)
+        set.addData('a/b/d', 3, 4)
+        set.addData('a/b/e/f', 5, 6)
+        set.addData('a/x/y', 7, 8)
+
+        when:
+        def result = set.toJsonable()
+
+        then:
+        result.id =~ /ID-\d+/
+        result.data.'$area' == 16
+        result.data.$color == '#9f5f00'
+
+        def json = JsonOutput.toJson(result)
+        json == '{"children":[{"children":[{"children":[],"id":"ID-0","name":"b/c","data":{"$area":1,"$color":"#33cb00",' +
+                '"c":2.000,"mc":0.000,"ms":"#00ff00","p":"a/b/c"}},{"children":[],"id":"ID-1","name":"b/d","data":{"$area":3,' +
+                '"$color":"#669800","c":4.000,"mc":0.000,"ms":"#00ff00","p":"a/b/d"}},{"children":[],"id":"ID-2","name":"b/e/f",' +
+                '"data":{"$area":5,"$color":"#986600","c":6.000,"mc":0.000,"ms":"#00ff00","p":"a/b/e/f"}},{"children":[],"id":"ID-3",' +
+                '"name":"x/y","data":{"$area":7,"$color":"#cc3200","c":8.000,"mc":0.000,"ms":"#00ff00","p":"a/x/y"}}],"id":"ID-4"' +
+                ',"name":"a","data":{"$area":16.0,"$color":"#9f5f00","c":6.250,"mc":8.000,"ms":"#cc3200","p":"a"}}],"id":"ID-5",' +
+                '"name":"","data":{"$area":16.0,"$color":"#9f5f00","c":6.250,"mc":8.000,"ms":"#cc3200","p":""}}'
+    }
 }

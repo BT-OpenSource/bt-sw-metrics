@@ -14,7 +14,7 @@ class D3PlusProducer implements VisualisationProducer {
     List<D3PlusRecord> records = []
 
     def addData(String path, BigDecimal size, BigDecimal colour, List extraData) {
-        D3PlusRecord record = new D3PlusRecord(path: path, size: size, colour: colour, extra: extraData)
+        D3PlusRecord record = new D3PlusRecord(path: path, size: size, colour: colour, extra: extraData, levelLimit: levelLimit)
         records << record
     }
 

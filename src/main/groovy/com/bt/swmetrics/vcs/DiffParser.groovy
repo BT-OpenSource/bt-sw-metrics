@@ -1,6 +1,6 @@
 package com.bt.swmetrics.vcs
 
-abstract class DiffParser {
+abstract class DiffParser implements PathProcessor {
     List<String> lines
 
     abstract List<String> getPaths()

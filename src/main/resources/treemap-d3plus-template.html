@@ -6,6 +6,8 @@
     <title>$title</title>
 
     <!-- Resource Files -->
+    <!-- d3 - BSD-style licence: Copyright 2010-2017 Mike Bostock. All rights reserved. See https://github.com/d3/d3/blob/master/LICENSE. -->
+    <!-- d3plus - MIT-style licence: Copyright (c) 2013 Alexander Simoes. See https://github.com/alexandersimoes/d3plus/blob/master/LICENSE. -->
     <% if (resourcePath != '') { %>
     <script language="javascript" type="text/javascript" src="$resourcePath/$initialisationCodeFile"></script>
     <script language="javascript" type="text/javascript" src="$resourcePath/$jsLibrary1File"></script>
@@ -83,7 +85,16 @@
             <p>(Changing the summarisation method will force a complete recalculation and
             redrawing of the tree-map.)</p>
 
-            <p>Hovering over a tile will show summary statistics for a tile.</p>
+            <p>Hovering over a tile will show statistics for that tile.
+                You can change which fields appear in the summary tooltip by selecting one or more
+                entries from the options below (the current size and colour values will always
+                be present in the tooltip regardless of whether they are selected here):</p>
+
+            <select id="tooltip-select" onchange="changeTooltip();" multiple="multiple">
+                <% colourFields.each { %>
+                <option value="$it">${columnIdToNameMap[it]}</option>
+                <% } %>
+            </select>
 
             <p>Clicking on a summary tile will drill down into that area or return to the higher level if
                 clicking on a leaf tile.</p>

@@ -53,7 +53,7 @@ class DiffStatsGeneratorSpec extends Specification {
 
         when:
         generator.generateTextReport()
-        def outputLines = baos.toString().split("\n").collect { it.trim() }
+        def outputLines = baos.toString().split("\n").collect { it.trim() }.findAll { !it.isEmpty() }
 
         then:
         outputLines == '''=== scripts/repeatable/#test_#packagebody_!swns_ut_eton_xml_processing.sql
@@ -68,7 +68,7 @@ Change in total indent: 0
 Before: mean indent: 1.000, max indent: 1, standard deviation: 0.000
 After:  mean indent: 1.000, max indent: 1, standard deviation: 0.000
 
-'''.split("\n").collect { it.trim() }
+'''.split("\n").collect { it.trim() }.findAll { !it.isEmpty() }
     }
 
     def "CSV generation should be selected based on options supplied"() {

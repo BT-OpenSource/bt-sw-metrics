@@ -2,16 +2,21 @@ buildscript {
     repositories { jcenter() }
     dependencies {
         classpath 'com.netflix.nebula:nebula-ospackage-plugin:3.+'
+        classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.3'
     }
 }
-group 'com.bt.swmetrics'
-version '1.0'
 
-// For DEB/RPM packaging
-apply plugin: 'nebula.ospackage-application'
+
+group 'com.bt.swmetrics'
+version '2.1-SNAPSHOT'
+
 apply plugin: 'application'
 apply plugin: 'groovy'
 apply plugin: 'java'
+// For DEB/RPM packaging
+apply plugin: 'nebula.ospackage-application'
+// AsciiDoc conversion
+apply plugin: 'org.asciidoctor.convert'
 
 sourceCompatibility = 1.8
 
@@ -26,10 +31,12 @@ ospackage {
     os = LINUX
     into '/opt/'
 }
+
 buildDeb {
     // Add a symlink to make the script easy to run
     link("/usr/local/bin/${project.name}", "/opt/${project.name}/bin/${project.name}", 555)
 }
+
 buildRpm {
     directory('/opt')
     addParentDirs false
@@ -50,6 +57,19 @@ dependencies {
     testCompile "org.hamcrest:hamcrest-core:1.3" // only necessary if Hamcrest matchers are used
     testRuntime "cglib:cglib-nodep:3.1"          // allows mocking of classes (in addition to interfaces)
     testRuntime "org.objenesis:objenesis:2.1"    // allows mocking of classes without default constructor (together with CGLIB)
+
+    testCompile "net.java.dev.jna:jna:4.5.1"
+}
+
+// Exclude runtime dependencies from the distribution since they're already built into the 'fat' JAR
+distributions {
+    main {
+        contents {
+            (configurations.runtime).each {
+                exclude "**/${it.name}"
+            }
+        }
+    }
 }
 
 jar {
@@ -62,3 +82,4 @@ jar {
         attributes("Main-Class": "com.bt.swmetrics.Main" )
     }
 }
+

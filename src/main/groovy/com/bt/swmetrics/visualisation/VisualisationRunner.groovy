@@ -1,10 +1,9 @@
 package com.bt.swmetrics.visualisation
 
-import com.bt.swmetrics.Configurator
+import com.bt.swmetrics.Configurable
 
 
-class VisualisationRunner {
-    Configurator configurator
+class VisualisationRunner implements Configurable {
     PrintStream stream
 
     def generateTreeMapVisualisation() {

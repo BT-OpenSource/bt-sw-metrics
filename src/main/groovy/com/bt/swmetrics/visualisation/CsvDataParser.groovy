@@ -16,15 +16,15 @@ class CsvDataParser {
     private CSVParser csvParser
     private List<List<String>> extraData
 
-    CsvDataParser(String csvData, String pathColumn, String sizeColumn, String colourColumn, List<String> extraColumns = []) {
+    CsvDataParser(String csvData, String pathColumn, String sizeColumn, String colourColumn, List<String> extraColumns = [], Closure pathFilter = { true }) {
         this.pathColumn = pathColumn
         this.sizeColumn = sizeColumn
         this.colourColumn = colourColumn
         this.extraColumns = extraColumns
-        parseCsvData(csvData)
+        parseCsvData(csvData, pathFilter)
     }
 
-    def parseCsvData(String data) {
+    def parseCsvData(String data, Closure pathFilter) {
         csvParser = CSVParser.parse(data, CSVFormat.DEFAULT.withHeader())
 
         int pathIndex = findIndexFor(pathColumn)
@@ -32,7 +32,7 @@ class CsvDataParser {
         int colourIndex = findIndexFor(colourColumn)
         def extraIndices = extraColumnNames.collect { findIndexFor(it) }
 
-        (paths, sizes, colours, extraData) = this.csvParser.records.collect {
+        (paths, sizes, colours, extraData) = this.csvParser.records.findAll { pathFilter(it[pathIndex]) }.collect {
             String path = it[pathIndex]
             BigDecimal size = convertPotentiallyBlankStringToBigDecimal(it[sizeIndex])
             BigDecimal colour = convertPotentiallyBlankStringToBigDecimal(it[colourIndex])

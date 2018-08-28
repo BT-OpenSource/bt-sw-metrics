@@ -17,15 +17,21 @@ class VcsParserFactory {
     private static GitDiffParser gitDiffParser = new GitDiffParser()
 
     static LogParser getLogParserInstance(Configurator configurator) {
-        findAndValidateVcsType(configurator) == 'svn' ? svnLogParser : gitLogParser
+        def parser = findAndValidateVcsType(configurator) == 'svn' ? svnLogParser : gitLogParser
+        parser.configurator = configurator
+        parser
     }
 
     static ListParser getListParserInstance(Configurator configurator) {
-        findAndValidateVcsType(configurator) == 'svn' ? svnListParser : gitListParser
+        def parser = findAndValidateVcsType(configurator) == 'svn' ? svnListParser : gitListParser
+        parser.configurator = configurator
+        parser
     }
 
     static DiffParser getDiffParserInstance(Configurator configurator) {
-        findAndValidateVcsType(configurator) == 'svn' ? svnDiffParser : gitDiffParser
+        def parser = findAndValidateVcsType(configurator) == 'svn' ? svnDiffParser : gitDiffParser
+        parser.configurator = configurator
+        parser
     }
 
     private static String findAndValidateVcsType(Configurator configurator) {

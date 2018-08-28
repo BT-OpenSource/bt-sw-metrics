@@ -6,9 +6,10 @@ class D3PlusRecord {
     BigDecimal colour
     List extra = []
     private List<String> components
+    int levelLimit = 0
 
     List<String> getPathComponents() {
-        components = components ?: (path.split('/') as List<String>).collect { it.contains('%') ? new URI(it).path : it }
+        components = components ?: (path.split('/', levelLimit) as List<String>).collect { it.contains('%') ? new URI(it).path : it }
     }
 
     Map toJsonable(String sizeName, String colourName, List<String> extraNames) {

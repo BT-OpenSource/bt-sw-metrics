@@ -1,12 +1,11 @@
 package com.bt.swmetrics.vcs
 
-import com.bt.swmetrics.Configurator
+import com.bt.swmetrics.Configurable
 import com.bt.swmetrics.filemetrics.MetricsCalculator
 
 import java.math.RoundingMode
 
-class DiffStatsGenerator {
-    Configurator configurator
+class DiffStatsGenerator implements Configurable {
     PrintStream stream
 
     DiffParser getDiffParser() {

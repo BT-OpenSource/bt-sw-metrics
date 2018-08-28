@@ -89,6 +89,27 @@ class TextFileFinderSpec extends Specification {
         paths.findAll { it =~ /simple.*\.txt$/ }.size() == 1
     }
 
+    // The following test makes use of native extension functions to change
+    // the process working directory. For this reason, it is UNSAFE to run
+    // in a multithreaded environment. Beware if parallel (threaded) test
+    // execution is ever enabled.
+    def "File exclusion pattern should match only against the relative path"() {
+        given:
+        def posix = new Posix()
+        def originalDir = posix.getcwd()
+        posix.chdir('src/test')
+        finder = new TextFileFinder(excludedPatterns: [/test/])
+
+        when:
+        def result = finder.findFiles(['.'])
+
+        then:
+        !result.isEmpty()
+
+        cleanup:
+        posix.chdir(originalDir)
+    }
+
     def "Should include files based on patterns, if specified"() {
         given:
         finder = new TextFileFinder(includedPatterns: [/simple-1/])

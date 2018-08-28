@@ -2,33 +2,35 @@ package com.bt.swmetrics.vcs.svn
 
 import com.bt.swmetrics.vcs.Commit
 import com.bt.swmetrics.vcs.ListParser
-import com.bt.swmetrics.vcs.PathInfo
-import com.bt.swmetrics.vcs.PathInfoMap
+import com.bt.swmetrics.vcs.PathCommitRecord
+import groovy.util.slurpersupport.GPathResult
 
 import java.time.Instant
 
 class SvnListParser extends ListParser {
 
     @Override
-    List<Tuple> parseToTupleList(String text) {
+    List<PathCommitRecord> parseToPathCommitRecordList(String text) {
         def xml = new XmlSlurper().parseText(text)
-        xml.list.entry.collect { entry ->
-            def name = entry.name.text()
+        parseXml(xml)
+    }
+
+    @Override
+    List<PathCommitRecord> parseToPathCommitRecordList(File file) {
+        def xml = new XmlSlurper().parse(file)
+        parseXml(xml)
+    }
+
+    private List<PathCommitRecord> parseXml(GPathResult xml) {
+        xml.list.entry.findAll { checkIfPathIncluded(stripPrefixes(it.name.text())) }.collect { entry ->
+            def name = stripPrefixes(entry.name.text())
             def author = entry.commit.author.text()
             def date = Instant.parse(entry.commit.date.text())
             def revision = Integer.parseInt(entry.commit.@revision.text())
             def kind = entry.@kind.text()
             def size = (kind == 'file') ? Long.parseLong(entry.size.text()) : 0
 
-            new Tuple(name, new Commit(revision, author, date), kind, size)
+            new PathCommitRecord(name, new Commit(revision, author, date, null), size)
         }
-    }
-
-    @Override
-    PathInfoMap parseToPathInfoMap(File file) {
-        def parsed = parseToTupleList(file.text)
-        parsed.collectEntries { String path, Commit commit, String kind, long size ->
-            [(path): new PathInfo(lastCommit: commit, size: size)]
-        } as PathInfoMap
     }
 }

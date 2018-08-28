@@ -55,7 +55,6 @@ class PathHistorySpec extends Specification {
         history.timestamps == [ageHalf, ageQuarter]
         history.actions == ['A', 'M']
         history.activeCommits.size() == 2
-        history.allCommits.size() == 2
         history.activeCommits[0].revision == 2
     }
 
@@ -77,76 +76,22 @@ class PathHistorySpec extends Specification {
         history.commitAges == [PathHistory.CHANGE_HALF_LIFE_DAYS, 2 * PathHistory.CHANGE_HALF_LIFE_DAYS]
     }
 
-    def "Commits up to and including a delete should not be included in stats"() {
+    def "Should be able to get path lifetime regardless of commit order"() {
         given:
         def now = history.baseDate
-        def age1 = now.minus(1, ChronoUnit.DAYS)
-        def age2 = now.minus(2, ChronoUnit.DAYS)
-        def age3 = now.minus(3, ChronoUnit.DAYS)
-        def author1 = "Sam Body"
+        def age1 = now.minus(10, ChronoUnit.DAYS)
+        def age2 = now.minus(1, ChronoUnit.DAYS)
+        def age3 = now.minus(5, ChronoUnit.DAYS)
+        def author1 = "Sam Boddy"
         def author2 = "Ann Oniemus"
+        def action = 'M'
 
         when:
-        history.addCommit(new Commit(3, author1, age1, 'A'))
-        history.addCommit(new Commit(2, author2, age2, 'D'))
-        history.addCommit(new Commit(1, author2, age3, 'A'))
-
-        then:
-        history.authors == [author1]
-        history.commitTotal == 1
-        history.agedCommitTotal <= 1.0
-        history.commitAges == [1]
-        history.activeCommits.size() == 1
-        history.allCommits.size() == 3
-    }
-
-    def "Should be able to copy a stream of commits up to a revision"() {
-        given:
-        def age1 = Instant.now().minus(1, ChronoUnit.DAYS)
-        def age2 = Instant.now().minus(2, ChronoUnit.DAYS)
-        def age3 = Instant.now().minus(3, ChronoUnit.DAYS)
-        def author1 = "Sam Body"
-        def author2 = "Ann Oniemus"
-        PathHistory sourceHistory = new PathHistory()
-        sourceHistory.addCommit(new Commit(1, author1, age1, 'A'))
-        sourceHistory.addCommit(new Commit(2, author2, age2, 'M'))
-
-        when:
-        history.copyHistory(sourceHistory, 2)
+        history.addCommit(new Commit(1, author1, age1, 'M'))
+        history.addCommit(new Commit(2, author2, age2, 'M'))
         history.addCommit(new Commit(3, author1, age3, 'M'))
 
         then:
-        history.authors == [author1, author2, author1]
-        history.commitTotal == 3
-        history.revisions == [3, 2, 1]
-    }
-
-    def "Should be able to copy handle multi-level self-referential copies"() {
-        given:
-        def age1 = Instant.now().minus(3, ChronoUnit.DAYS)
-        def age2 = Instant.now().minus(2, ChronoUnit.DAYS)
-        def age3 = Instant.now().minus(1, ChronoUnit.DAYS)
-        def author1 = "Sam Body"
-        def author2 = "Ann Oniemus"
-        PathHistory history1 = new PathHistory()
-        PathHistory history2 = new PathHistory()
-        PathHistory history3 = new PathHistory()
-
-        history1.addCommit(new Commit(1, author1, age1, 'A'))
-
-        history2.copyHistory(history1, 1)
-        history2.addCommit(new Commit(2, author2, age2, 'M'))
-
-        history3.copyHistory(history2, 2)
-        history3.addCommit(new Commit(3, author1, age3, 'M'))
-
-        when:
-        history1.copyHistory(history3, 3)
-        history2.copyHistory(history3, 3)
-
-        then:
-        history1.authors == [author1, author2, author1]
-        history1.commitTotal == 3
-        history1.revisions == [3, 2, 1]
+        history.lifetimeInDays == 10
     }
 }

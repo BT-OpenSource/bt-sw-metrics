@@ -7,15 +7,19 @@ import java.time.temporal.ChronoUnit
 
 class AuthorStats {
     String author
-    private SortedSet<Instant> commitDates = new TreeSet<>()
     private Map<String, List<Instant>> pathCommitInstants = [:]
+    private SortedMap<Instant,Integer> commitPathCounts = new TreeMap<>()
 
     void addCommit(Instant when, List<String> paths) {
-        commitDates << when
+        commitPathCounts[when] = paths.size()
         paths.each { path ->
             pathCommitInstants[path] = pathCommitInstants[path] ?: []
             pathCommitInstants[path] << when
         }
+    }
+
+    SortedSet<Instant> getCommitDates() {
+        commitPathCounts.keySet()
     }
 
     long getTenure() {
@@ -26,23 +30,24 @@ class AuthorStats {
         this.pathCommitInstants.collectEntries { path, times -> [(path): times.size()] } as Map<String,Integer>
     }
 
-    Map<OffsetDateTime,Integer> monthlyTotals(Instant start, Instant end) {
+    Map<OffsetDateTime,Tuple2<Integer,Integer>> monthlyTotals(Instant start, Instant end) {
         def startOfPeriod = OffsetDateTime.ofInstant(start, ZoneOffset.UTC)
         def startMonth = OffsetDateTime.of(startOfPeriod.year, startOfPeriod.monthValue, 1, 0, 0, 0, 0, ZoneOffset.UTC)
 
         def endOfPeriod = OffsetDateTime.ofInstant(end, ZoneOffset.UTC)
         def endMonth = OffsetDateTime.of(endOfPeriod.year, endOfPeriod.monthValue, 1, 0, 0, 0, 0, ZoneOffset.UTC).plusMonths(1)
 
-        Map<OffsetDateTime,Integer> result = [:]
+        Map<OffsetDateTime,Tuple2<Integer,Integer>> result = [:]
 
-        def byYear = commitDates.groupBy { OffsetDateTime.ofInstant(it, ZoneOffset.UTC).year }
+        def byYear = commitPathCounts.groupBy { OffsetDateTime.ofInstant(it.key, ZoneOffset.UTC).year }
 
         OffsetDateTime currentMonth = startMonth
         while (currentMonth < endMonth) {
-            def byMonth = byYear[currentMonth.year]?.groupBy { OffsetDateTime.ofInstant(it, ZoneOffset.UTC).monthValue } ?: [:]
+            def byMonth = byYear[currentMonth.year]?.groupBy { OffsetDateTime.ofInstant(it.key, ZoneOffset.UTC).monthValue } ?: [:]
 
-            result[currentMonth] = 0
-            result[currentMonth] = byMonth[currentMonth.monthValue]?.size() ?: 0
+            def commits = byMonth[currentMonth.monthValue]?.size() ?: 0
+            def paths = byMonth[currentMonth.monthValue]?.values()?.inject(0) { sum, count -> sum + count } ?: 0
+            result[currentMonth] = new Tuple2<Integer,Integer>(commits, paths)
             currentMonth = currentMonth.plusMonths(1)
         }
 
@@ -63,5 +68,9 @@ class AuthorStats {
 
     Map<String,List<Instant>> getPathCommitDates() {
         this.pathCommitInstants
+    }
+
+    Map<Instant,Integer> getPathModificationCounts() {
+        this.commitPathCounts
     }
 }

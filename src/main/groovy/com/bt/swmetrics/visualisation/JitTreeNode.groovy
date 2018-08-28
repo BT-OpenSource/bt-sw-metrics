@@ -15,9 +15,10 @@ class JitTreeNode {
     List<JitTreeNode> children = []
     JitTreeNode parent
     List extra = []
+    int levelLimit = 0
 
     JitTreeNode addChild(String childPath, BigDecimal sizeMetric, BigDecimal colourMetric, List extraData = []) {
-        def node = new JitTreeNode()
+        def node = new JitTreeNode(levelLimit: levelLimit)
         node.path = childPath
         node.size = sizeMetric
         node.colourMetric = colourMetric
@@ -27,7 +28,7 @@ class JitTreeNode {
     }
 
     private void addNodeToAppropriateParent(String childPath, JitTreeNode node) {
-        def relativePathComponents = (childPath - this.path).split('/').grep()
+        def relativePathComponents = (childPath - this.path).split('/', levelLimit).grep()
         def parent = findOrCreateRelativeParent(relativePathComponents)
         parent.children << node
         node.parent = parent
@@ -59,7 +60,7 @@ class JitTreeNode {
 
     String setPath(String newPath) {
         this.path = encodePathIfNecessary(newPath)
-        this.name = path.replaceAll(/^.*\//, '')
+        this.name = path.split('/', levelLimit)[-1]
     }
 
     private static String encodePathIfNecessary(String path) {
