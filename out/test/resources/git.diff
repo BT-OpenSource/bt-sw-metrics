@@ -1,0 +1,59 @@
+diff --git a/src/main/groovy/com/bt/swmetrics/vcs/DiffParser.groovy b/src/main/groovy/com/bt/swmetrics/vcs/DiffParser.groovy
+index 6e960c7..b40d663 100755
+--- a/src/main/groovy/com/bt/swmetrics/vcs/DiffParser.groovy
++++ b/src/main/groovy/com/bt/swmetrics/vcs/DiffParser.groovy
+@@ -1,8 +1,31 @@
+ package com.bt.swmetrics.vcs
+ 
+-trait DiffParserTrait {
++abstract class DiffParser {
+     List<String> lines
+ 
+     abstract List<String> getPaths()
+-    abstract Map<String, DiffChunkList> getChunksByPath()
++    abstract Map<String,List<String>> getLinesByPath()
++
++    Map<String, DiffChunkList> getChunksByPath() {
++        linesByPath.collectEntries { String path, List<String> fileLines ->
++
++            [(path): findChunks(fileLines)]
++        } as Map<String, DiffChunkList>
++    }
++
++    static DiffChunkList findChunks(List<String> fileLines) {
++        def linesWithoutHeader = fileLines.dropWhile { !(it.startsWith('@@')) }
++        linesWithoutHeader.inject([]) { List<List<String>> chunked, String line ->
++            appendNewChunkLineListOrAddLineToLatest(line, chunked)
++        }.collect { new DiffChunk(it) }
++    }
++
++    private static List<List<String>> appendNewChunkLineListOrAddLineToLatest(String line, List<List<String>> chunked) {
++        if (line.startsWith('@@')) {
++            chunked << [line]
++        } else {
++            chunked[-1] << line
++        }
++        chunked
++    }
+ }
+\ No newline at end of file
+diff --git a/src/main/groovy/com/bt/swmetrics/vcs/DiffStatsReporter.groovy b/src/main/groovy/com/bt/swmetrics/vcs/DiffStatsReporter.groovy
+index b7d04bc..f3168e3 100755
+--- a/src/main/groovy/com/bt/swmetrics/vcs/DiffStatsReporter.groovy
++++ b/src/main/groovy/com/bt/swmetrics/vcs/DiffStatsReporter.groovy
+@@ -9,7 +9,7 @@ class DiffStatsReporter {
+     Configurator configurator
+     PrintStream stream
+ 
+-    DiffParserTrait getDiffParser() {
++    DiffParser getDiffParser() {
+         VcsParserFactory.getDiffParserInstance(configurator)
+     }
+@@ -24,7 +24,7 @@ class VcsParserFactory {
+         findAndValidateVcsType(configurator) == 'svn' ? svnListParser : gitListParser
+     }
+ 
+-    static DiffParserTrait getDiffParserInstance(Configurator configurator) {
++    static DiffParser getDiffParserInstance(Configurator configurator) {
+         findAndValidateVcsType(configurator) == 'svn' ? svnDiffParser : gitDiffParser
+     }

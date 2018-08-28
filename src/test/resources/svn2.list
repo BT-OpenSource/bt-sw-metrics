@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lists>
+<list
+   path="https://server/svn/repo/trunk">
+   <entry
+   kind="file">
+<name>Backend/pacs_server/Plsql/errpkg.pkb</name>
+<size>12488</size>
+<commit
+   revision="208996">
+<author>neil</author>
+<date>2015-05-20T11:58:03.329338Z</date>
+</commit>
+</entry>
+</list>
+</lists>

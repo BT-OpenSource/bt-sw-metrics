@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lists>
+<list
+   path="https://server/svn/repo/trunk">
+<entry
+   kind="dir">
+<name>Backend</name>
+<commit
+   revision="247217">
+<author>alice</author>
+<date>2017-06-14T07:25:43.945801Z</date>
+</commit>
+</entry>
+<entry
+   kind="dir">
+<name>Backend/ASG</name>
+<commit
+   revision="246170">
+<author>bob</author>
+<date>2017-05-25T10:01:49.823265Z</date>
+</commit>
+</entry>
+<entry
+   kind="file">
+<name>Backend/ASG/103_BTGCE_13790.mig</name>
+<size>832</size>
+<commit
+   revision="234837">
+<author>charlie</author>
+<date>2016-09-14T13:19:11.658242Z</date>
+</commit>
+</entry>
+<entry
+   kind="file">
+<name>Backend/ASG/103_BTGCE_13790_MSI.met</name>
+<size>2814</size>
+<commit
+   revision="234915">
+<author>dan</author>
+<date>2016-09-16T13:02:20.279856Z</date>
+</commit>
+</entry>
+</list>
+</lists>
