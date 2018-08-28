@@ -1,4 +1,4 @@
-# swmetrics
+# swmetrics ![Build status](https://travis-ci.org/BT-OpenSource/bt-sw-metrics.svg?branch=master)
 
 The main purpose of **swmetrics** tool is to generate a number of metrics
 about (principally) source code. The metrics can be generated either
